@@ -24,6 +24,7 @@ module PrivatePub
       elsif message["channel"] !~ %r{^/meta/}
         authenticate_publish(message)
       end
+			message['data']['channel'] ||= message['channel'] if message['data']
       callback.call(message)
     end
 
@@ -38,7 +39,6 @@ module PrivatePub
         message["error"] = "Signature has expired."
 			else
 				Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_id: message['clientId']})
-				puts "\nPP redis hset: #{Redis.current.hgetall('subscriptions')}\n"
       end
     end
 
@@ -46,11 +46,16 @@ module PrivatePub
     def authenticate_publish(message)
       if PrivatePub.config[:secret_token].nil?
         raise Error, "No secret_token config set, ensure private_pub.yml is loaded properly."
-      elsif message["ext"]["private_pub_token"] != PrivatePub.config[:secret_token]
-        message["error"] = "Incorrect token."
+			elsif message["ext"].nil? || (message["ext"]["private_pub_token"] != PrivatePub.config[:secret_token] && !credentials_valid?(message))
+				message["error"] = "Incorrect or no token."
       else
         message["ext"]["private_pub_token"] = nil
       end
     end
+		
+		def credentials_valid?(message)
+			return message['ext']['private_pub_signature'] == Digest::SHA1.hexdigest([PrivatePub.config[:secret_token], message['channel'], message['ext']['private_pub_timestamp']].join)
+		end
+		
   end
 end
