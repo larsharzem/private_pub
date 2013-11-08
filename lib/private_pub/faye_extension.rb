@@ -12,7 +12,6 @@ module PrivatePub
     def incoming(message, callback)
 			hash_string = Redis.current.hgetall('subscriptions')
 			if hash_string && !hash_string.empty?
-				# subscriptions = eval(hash_string)
 				key = hash_string.find{|k, v| eval(v)[:client_id] == message['clientId']}
 				if key
 					Redis.current.hset('subscriptions', key.first, {time: Time.now.to_i, client_id: eval(hash_string[key.first])[:client_id]})
