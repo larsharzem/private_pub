@@ -10,14 +10,22 @@ module PrivatePub
     # Callback to handle incoming Faye messages. This authenticates both
     # subscribe and publish calls.
     def incoming(message, callback)
-			hash_string = Redis.current.hgetall('subscriptions')
-			if hash_string && !hash_string.empty?
-				key = hash_string.find{|k, v| eval(v)[:client_id] == message['clientId']}
-				if key
-					Redis.current.hset('subscriptions', key.first, {time: Time.now.to_i, client_id: eval(hash_string[key.first])[:client_id]})
+			
+			## begin try
+			begin
+				hash_string = Redis.current.hgetall('subscriptions')
+				if hash_string && !hash_string.empty?
+					# subscriptions = eval(hash_string)
+					key = hash_string.find{|k, v| eval(v)[:client_id] == message['clientId']}
+					if key
+						Redis.current.hset('subscriptions', key.first, {time: Time.now.to_i, client_id: eval(hash_string[key.first])[:client_id]})
+					end
 				end
+			rescue Exception => e
+				puts "\nException: #{e}\n"
 			end
-			# Redis.current.set(channel, client_id)
+			## end try
+			
       if message["channel"] == "/meta/subscribe"
         authenticate_subscribe(message)
       elsif message["channel"] !~ %r{^/meta/}
@@ -37,7 +45,13 @@ module PrivatePub
       elsif PrivatePub.signature_expired? message["ext"]["private_pub_timestamp"].to_i
         message["error"] = "Signature has expired."
 			else
-				Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_id: message['clientId']})
+				## begin try
+				begin
+					Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_id: message['clientId']})
+				rescue Exception => e
+					puts "\nException: #{e}\n"
+				end
+				## end try
       end
     end
 
