@@ -69,7 +69,7 @@ module PrivatePub
     # Returns the Faye Rack application.
     # Any options given are passed to the Faye::RackAdapter.
     def faye_app(options = {})
-      options = {:mount => "/faye", :timeout => 45, :extensions => [FayeExtension.new]}.merge(options)
+      options = {:mount => "/faye", :timeout => 25, :extensions => [FayeExtension.new]}.merge(options)
       Faye::RackAdapter.new(options)
     end
   end
