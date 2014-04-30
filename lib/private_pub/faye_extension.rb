@@ -4,13 +4,16 @@ module PrivatePub
   # This class is an extension for the Faye::RackAdapter.
   # It is used inside of PrivatePub.faye_app.
   class FayeExtension
-
-		Redis.current = Redis.new(:host => '127.0.0.1', :port => 6379)
-		
+	def initialize(redis_address = "")
+		puts "initialize, address:"
+		puts redis_address || '127.0.0.1'
+		Redis.current = Redis.new(:host => redis_address || '127.0.0.1', :port => 6379)
+		return self
+	end
+	
     # Callback to handle incoming Faye messages. This authenticates both
     # subscribe and publish calls.
     def incoming(message, callback)
-			
 			## begin try
 			begin
 				hash_string = Redis.current.hgetall('subscriptions')
