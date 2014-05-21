@@ -20,7 +20,7 @@ module PrivatePub
 				if hash_string && !hash_string.empty?
 					# subscriptions = eval(hash_string)
 					key = hash_string.find{|k, v| eval(v)[:client_id] == message['clientId']}
-					if key
+					if key && key.index('/feed/actor') == 0
 						Redis.current.hset('subscriptions', key.first, {time: Time.now.to_i, client_id: eval(hash_string[key.first])[:client_id]})
 					end
 				end
