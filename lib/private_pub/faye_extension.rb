@@ -13,7 +13,7 @@ module PrivatePub
 		# Callback to handle incoming Faye messages. This authenticates both
 		# subscribe and publish calls.
 		def incoming(message, callback)
-			puts "\n#{Time.now} incoming, msg", message
+			#puts "\n#{Time.now} incoming, msg", message
 			
 			if message["channel"] == "/meta/subscribe"
 				authenticate_subscribe(message)
@@ -32,15 +32,15 @@ module PrivatePub
 							clean_hash = eval(hash_string[channel])
 							#puts "clean", clean_hash
 							if message['channel'] == '/meta/disconnect'
-								puts "DISCONNECTED"
+								#puts "DISCONNECTED"
 								if (clean_hash[:client_ids].length > 1)
-									puts "deleting one"
+									#puts "deleting one"
 									new_client_ids = clean_hash[:client_ids].delete(message['clientId'])
 									new_client_ids = clean_hash[:client_ids]
 									#puts new_client_ids
 									Redis.current.hset('subscriptions', channel, {time: Time.now.to_i, client_ids: new_client_ids, called_method: "incoming"})
 								else
-									puts "deleting all"
+									#puts "deleting all"
 									Redis.current.hdel('subscriptions', channel)
 								end
 							else
