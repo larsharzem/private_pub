@@ -6,10 +6,10 @@ module PrivatePub
 	class FayeExtension
 		def initialize(redis_address = "", redis_port = 6379, redis_password = nil)
 			puts "initialize faye extension, address: #{redis_address || '127.0.0.1'}, port: #{redis_port}"
-			if redis_password.present?
-				Redis.current = Redis.new(host: redis_address || '127.0.0.1', port: redis_port, password: redis_password)
-			else
+			if redis_password.nil?
 				Redis.current = Redis.new(host: redis_address || '127.0.0.1', port: redis_port)
+			else
+				Redis.current = Redis.new(host: redis_address || '127.0.0.1', port: redis_port, password: redis_password)
 			end
 			return self
 		end
