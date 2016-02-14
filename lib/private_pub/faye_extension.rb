@@ -43,10 +43,10 @@ module PrivatePub
 				elsif PrivatePub.signature_expired? message["ext"]["private_pub_timestamp"].to_i
 					message["error"] = "Signature has expired."
 				elsif message["subscription"].index('/feed/actor') == 0
-				
+					puts "\nincoming new subscription: #{message["subscription"]}"
 					current_subsciptions = Redis.current.hgetall('subscriptions')
 					present_subscription = current_subsciptions[message["subscription"]]
-					puts "already present sub? #{present_subscription}"
+					puts "already present sub by this actor? #{!present_subscription.nil? && present_subscription.length != 0}"
 					if present_subscription
 						client_ids = eval(present_subscription)[:client_ids]
 						client_ids[message['clientId']] = Time.now.to_i
@@ -55,7 +55,7 @@ module PrivatePub
 					end
 					## begin try
 					begin
-						puts "writing sub: #{client_ids}"
+						puts "writing new subscription, now #{client_ids.length} channels in total"
 						Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_ids: client_ids, called_method: "authenticate_subscribe"})
 					rescue Exception => e
 						puts "\nException: #{e}\n"
@@ -82,34 +82,35 @@ module PrivatePub
 			def maintain_channel_subscriptions(message)
 				begin ## begin try
 					current_subsciptions = Redis.current.hgetall('subscriptions')
-					puts "current_subsciptions: #{current_subsciptions}"
+					puts "\n#{Time.now} incoming, current_subsciptions: #{current_subsciptions.keys.join(', ')}"
 					#Redis.current.hset('log', "#{Time.now.to_i}_inco", {called_method: "incoming", message: message, current_subsciptions: current_subsciptions})
 					
 					return unless current_subsciptions
 					message_client_id = message['clientId']
 					key = current_subsciptions.find{|k, v| eval(v)[:client_ids] != nil && eval(v)[:client_ids][message_client_id]}
-					puts "this user's subscription:   #{key ? key.first + " --> " + key.last : "NONE"}"
+					puts "this user's subscription: #{key ? ("#{key.first} --> #{eval(key.last)[:client_ids].length} channels, latest update: #{Time.at(eval(key.last)[:time])}") : "NONE, returning"}"
 					
 					return unless key && key.first.index('/feed/actor') == 0
 					channel = key.first
 					channel_hash = eval(current_subsciptions[channel])
 					if message['channel'] == '/meta/disconnect'
 						if channel_hash[:client_ids].length > 1
-							puts "disconnect, deleting one client id #{message_client_id}, setting new timestamp: #{Time.now.to_i}"
+							puts "\ndisconnect, deleting channel, setting new subscription timestamp: #{Time.now}. channels left: #{channel_hash[:client_ids].length - 1}"
 							channel_hash[:time] = Time.now.to_i
 							channel_hash[:called_method] = "incoming"
 							channel_hash[:client_ids].delete(message_client_id)
 							Redis.current.hset('subscriptions', channel, channel_hash)
 						else
-							puts "disconnect, deleting user's channel"
+							puts "disconnect, deleting user's subscription (no channels left)"
 							Redis.current.hdel('subscriptions', channel)
 						end
 					else
 						channel_hash[:time] = Time.now.to_i
 						channel_hash[:called_method] = "incoming"
+						puts "performing cleanup for subscription:"
 						channel_hash[:client_ids] = cleanup_client_id_timestamps(channel_hash[:client_ids], message_client_id)
 						
-						puts "updating timestamps for subscription of channel #{channel}: #{channel_hash}"
+						puts "updating timestamps for subscription of channel #{channel}: #{channel_hash[:client_ids].length} channels, latest update: #{Time.now}"
 						Redis.current.hset('subscriptions', channel, channel_hash)
 					end # don't do anything for /meta/unsubscribe
 							
@@ -119,13 +120,15 @@ module PrivatePub
 			end
 			
 			def cleanup_client_id_timestamps(client_ids, current_client_id)
-				client_ids.each do |client_id, timestamp|
+				client_ids.each_with_index do |(client_id, timestamp), index|
 					if client_id == current_client_id
-						puts "found id, updating: #{client_id}"
+						puts "index #{index}: found id, updating"
 						client_ids[client_id] = Time.now.to_i
 					elsif Time.now.to_i - timestamp > 50 # 2 * the keep alive time
-						puts "deleting: #{client_id}"
+						puts "index #{index}: deleting, grace time exceeded"
 						client_ids.delete(client_id)
+					else
+						puts "index #{index}: omitting delete, grace time not exceeded"
 					end
 				end
 				
