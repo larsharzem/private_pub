@@ -1,15 +1,22 @@
 require 'redis'
+require 'net/http'
 
 module PrivatePub
 	# This class is an extension for the Faye::RackAdapter.
 	# It is used inside of PrivatePub.faye_app.
 	class FayeExtension
-		def initialize(redis_address = "", redis_port = 6379, redis_password = nil)
-			puts "initialize faye extension, address: #{redis_address || '127.0.0.1'}, port: #{redis_port}"
-			if redis_password.nil?
-				Redis.current = Redis.new(host: redis_address || '127.0.0.1', port: redis_port)
+		rails_server = 'http://localhost'
+		
+		def initialize(options_hash = {})
+			options_hash[:redis_address] ||= '127.0.0.1'
+			options_hash[:redis_port] ||= 6379
+			options_hash[:redis_password] ||= nil
+			puts "initialize faye extension, options: #{options_hash}"
+			rails_server = options_hash[:rails_server] unless options_hash[:rails_server].nil?
+			if options_hash[:redis_password].nil?
+				Redis.current = Redis.new(host: options_hash[:redis_address], port: options_hash[:redis_port])
 			else
-				Redis.current = Redis.new(host: redis_address || '127.0.0.1', port: redis_port, password: redis_password)
+				Redis.current = Redis.new(host: options_hash[:redis_address], port: options_hash[:redis_port], password: options_hash[:redis_password])
 			end
 			return self
 		end
@@ -57,6 +64,7 @@ module PrivatePub
 					begin
 						puts "writing new subscription, now #{client_ids.length} channels in total"
 						Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_ids: client_ids, called_method: "authenticate_subscribe"})
+						ping_online_actors_change_to_rails(message["subscription"])
 					rescue Exception => e
 						puts "\nException: #{e}\n"
 					end
@@ -103,6 +111,8 @@ module PrivatePub
 						else
 							puts "disconnect, deleting user's subscription (no channels left)"
 							Redis.current.hdel('subscriptions', channel)
+							
+							ping_online_actors_change_to_rails(channel)
 						end
 					else
 						channel_hash[:time] = Time.now.to_i
@@ -113,7 +123,7 @@ module PrivatePub
 						puts "updating timestamps for subscription of channel #{channel}: #{channel_hash[:client_ids].length} channels, latest update: #{Time.now}"
 						Redis.current.hset('subscriptions', channel, channel_hash)
 					end # don't do anything for /meta/unsubscribe
-							
+				
 				rescue Exception => e
 					puts "\nException: #{e}\n"
 				end ## end try
@@ -133,6 +143,19 @@ module PrivatePub
 				end
 				
 				return client_ids
+			end
+			
+			def ping_online_actors_change_to_rails(feed)
+				url = URI.parse('http://127.0.0.1:3000/update_online_actors_ping?unsub_actor_id=' + feed.split('_').last)
+				req = Net::HTTP::Get.new(url.to_s)
+				begin ## begin try
+					res = Net::HTTP.start(url.host, url.port) {|http|
+						http.request(req)
+					}
+					puts "server response: #{res.body}"
+				rescue Exception => e
+					puts "\nException: #{e}\n"
+				end ## end try
 			end
 		
 	end
