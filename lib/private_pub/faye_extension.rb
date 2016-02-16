@@ -5,14 +5,14 @@ module PrivatePub
 	# This class is an extension for the Faye::RackAdapter.
 	# It is used inside of PrivatePub.faye_app.
 	class FayeExtension
-		rails_server = 'http://localhost'
+		@@rails_server = 'http://localhost'
 		
 		def initialize(options_hash = {})
 			options_hash[:redis_address] ||= '127.0.0.1'
 			options_hash[:redis_port] ||= 6379
 			options_hash[:redis_password] ||= nil
 			puts "initialize faye extension, options: #{options_hash}"
-			rails_server = options_hash[:rails_server] unless options_hash[:rails_server].nil?
+			@@rails_server = options_hash[:rails_server] unless options_hash[:rails_server].nil?
 			if options_hash[:redis_password].nil?
 				Redis.current = Redis.new(host: options_hash[:redis_address], port: options_hash[:redis_port])
 			else
@@ -146,7 +146,7 @@ module PrivatePub
 			end
 			
 			def ping_online_actors_change_to_rails(feed)
-				url = URI.parse(rails_server + '/update_online_actors_ping?unsub_actor_id=' + feed.split('_').last)
+				url = URI.parse(@@rails_server + '/update_online_actors_ping?unsub_actor_id=' + feed.split('_').last)
 				req = Net::HTTP::Get.new(url.to_s)
 				begin ## begin try
 					res = Net::HTTP.start(url.host, url.port) {|http|
