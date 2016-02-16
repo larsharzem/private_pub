@@ -146,7 +146,7 @@ module PrivatePub
 			end
 			
 			def ping_online_actors_change_to_rails(feed)
-				url = URI.parse(@@rails_server + '/update_online_actors_ping?unsub_actor_id=' + feed.split('_').last)
+				url = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last)
 				req = Net::HTTP::Get.new(url.to_s)
 				begin ## begin try
 					res = Net::HTTP.start(url.host, url.port) {|http|
