@@ -1,5 +1,6 @@
 require 'redis'
 require 'net/http'
+require 'thread'
 
 module PrivatePub
 	# This class is an extension for the Faye::RackAdapter.
@@ -146,14 +147,17 @@ module PrivatePub
 			def ping_online_actors_change_to_rails(feed)
 				url = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last)
 				req = Net::HTTP::Get.new(url.to_s)
-				begin ## begin try
-					res = Net::HTTP.start(url.host, url.port) {|http|
-						http.request(req)
-					}
-					puts "pinging rails server with URL #{url.to_s}, response: #{res.body}"
-				rescue Exception => e
-					puts "\nException: #{e}\n"
-				end ## end try
+				Thread.new do
+					begin ## begin try
+						res = Net::HTTP.start(url.host, url.port) {|http|
+							http.request(req)
+						}
+
+						puts "pinging rails server with URL #{url.to_s}, response: #{res.body}"
+					rescue Exception => e
+						puts "\nException: #{e} while pinging rails with URL: #{url.to_s}"
+					end ## end try
+				end
 			end
 		
 	end
