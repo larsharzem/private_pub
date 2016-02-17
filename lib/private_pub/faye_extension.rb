@@ -9,15 +9,15 @@ module PrivatePub
 		@@rails_server = 'http://localhost'
 		
 		def initialize(options_hash = {})
-			options_hash[:redis_address] ||= '127.0.0.1'
+			options_hash[:redis_server] ||= '127.0.0.1'
 			options_hash[:redis_port] ||= 6379
 			options_hash[:redis_password] ||= nil
 			puts "initialize faye extension, options: #{options_hash}"
 			@@rails_server = options_hash[:rails_server] unless options_hash[:rails_server].nil?
 			if options_hash[:redis_password].nil?
-				Redis.current = Redis.new(host: options_hash[:redis_address], port: options_hash[:redis_port])
+				Redis.current = Redis.new(host: options_hash[:redis_server], port: options_hash[:redis_port])
 			else
-				Redis.current = Redis.new(host: options_hash[:redis_address], port: options_hash[:redis_port], password: options_hash[:redis_password])
+				Redis.current = Redis.new(host: options_hash[:redis_server], port: options_hash[:redis_port], password: options_hash[:redis_password])
 			end
 			return self
 		end
