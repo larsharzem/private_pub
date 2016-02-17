@@ -44,7 +44,7 @@ module PrivatePub
 			# Ensure the subscription signature is correct and that it has not expired.
 			def authenticate_subscribe(message)
 				subscription = PrivatePub.subscription(:channel => message["subscription"], :timestamp => message["ext"]["private_pub_timestamp"])
-				#Redis.current.hset('log', "#{Time.now.to_i}_auth", {called_method: "authenticate_subscribe", message_subscription: message["subscription"], client_id: message['clientId']})
+				#Redis.current.hset('log', "#{Time.now.to_i}_auth", {message_subscription: message["subscription"], client_id: message['clientId']})
 				if message["ext"]["private_pub_signature"] != subscription[:signature]
 					message["error"] = "Incorrect signature."
 				elsif PrivatePub.signature_expired? message["ext"]["private_pub_timestamp"].to_i
@@ -63,7 +63,7 @@ module PrivatePub
 					## begin try
 					begin
 						puts "writing new subscription, now #{client_ids.length} channels in total"
-						Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_ids: client_ids, called_method: "authenticate_subscribe"})
+						Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_ids: client_ids})
 						ping_online_actors_change_to_rails(message["subscription"])
 					rescue Exception => e
 						puts "\nException: #{e}\n"
@@ -91,7 +91,7 @@ module PrivatePub
 				begin ## begin try
 					current_subsciptions = Redis.current.hgetall('subscriptions')
 					puts "\n#{Time.now} incoming, current_subsciptions: #{current_subsciptions.keys.join(', ')}"
-					#Redis.current.hset('log', "#{Time.now.to_i}_inco", {called_method: "incoming", message: message, current_subsciptions: current_subsciptions})
+					#Redis.current.hset('log', "#{Time.now.to_i}_inco", {message: message, current_subsciptions: current_subsciptions})
 					
 					return unless current_subsciptions
 					message_client_id = message['clientId']
@@ -103,20 +103,18 @@ module PrivatePub
 					channel_hash = eval(current_subsciptions[channel])
 					if message['channel'] == '/meta/disconnect'
 						if channel_hash[:client_ids].length > 1
-							puts "\ndisconnect, deleting channel, setting new subscription timestamp: #{Time.now}. channels left: #{channel_hash[:client_ids].length - 1}"
-							channel_hash[:time] = Time.now.to_i
-							channel_hash[:called_method] = "incoming"
+							puts "\ndisconnect, deleting channel. channels left: #{channel_hash[:client_ids].length - 1}"
 							channel_hash[:client_ids].delete(message_client_id)
 							Redis.current.hset('subscriptions', channel, channel_hash)
 						else
 							puts "disconnect, deleting user's subscription (no channels left)"
 							Redis.current.hdel('subscriptions', channel)
 							
+							puts "now: #{Redis.current.hgetall('subscriptions')}"
 							ping_online_actors_change_to_rails(channel)
 						end
 					else
 						channel_hash[:time] = Time.now.to_i
-						channel_hash[:called_method] = "incoming"
 						puts "performing cleanup for subscription:"
 						channel_hash[:client_ids] = cleanup_client_id_timestamps(channel_hash[:client_ids], message_client_id)
 						
@@ -152,7 +150,7 @@ module PrivatePub
 					res = Net::HTTP.start(url.host, url.port) {|http|
 						http.request(req)
 					}
-					puts "server response: #{res.body}"
+					puts "pinging rails server with URL #{url.to_s}, response: #{res.body}"
 				rescue Exception => e
 					puts "\nException: #{e}\n"
 				end ## end try
