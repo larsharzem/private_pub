@@ -145,17 +145,17 @@ module PrivatePub
 			end
 			
 			def ping_online_actors_change_to_rails(feed)
-				url = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last)
-				req = Net::HTTP::Get.new(url.to_s)
+				uri = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last)
+				req = Net::HTTP::Get.new(uri.to_s)
 				Thread.new do
 					begin ## begin try
-						res = Net::HTTP.start(url.host, url.port) {|http|
+						res = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') {|http|
 							http.request(req)
 						}
 
-						puts "pinging rails server with URL #{url.to_s}, response: #{res.body}"
+						puts "pinging rails server with URI #{uri.to_s}, response:\n#{res.body}"
 					rescue Exception => e
-						puts "\nException: #{e} while pinging rails with URL: #{url.to_s}"
+						puts "\nException: #{e} while pinging rails with URI: #{uri.to_s}"
 					end ## end try
 				end
 			end
