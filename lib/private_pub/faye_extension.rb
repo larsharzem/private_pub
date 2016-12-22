@@ -19,7 +19,7 @@ module PrivatePub
 			else
 				Redis.current = Redis.new(host: options_hash[:redis_server], port: options_hash[:redis_port], password: options_hash[:redis_password])
 			end
-			puts "initialize faye extension, options: #{options_hash}\nRedis server: #{Redis.current}"
+			puts "initialize faye extension, options: #{options_hash}\nRedis client: #{Redis.current.inspect}"
 			return self
 		end
 	
@@ -160,7 +160,7 @@ module PrivatePub
 						http.use_ssl = uri.scheme == 'https'
 						res = http.request(req)
 
-						puts "pinging rails server with URI #{uri.to_s}, response status: #{res.status}, body:\n#{res.body}"
+						puts "pinging rails server with URI #{uri.to_s}, response body:\n#{res.body}"
 					rescue Exception => e
 						puts "\nException: #{e} while pinging rails with URI: #{uri.to_s}"
 					end ## end try

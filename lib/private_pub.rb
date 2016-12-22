@@ -57,7 +57,8 @@ module PrivatePub
     # Returns a subscription hash to pass to the PrivatePub.sign call in JavaScript.
     # Any options passed are merged to the hash.
     def subscription(options = {})
-      sub = {:server => config[:server], :timestamp => (Time.now.to_f * 1000).round}.merge(options)
+      # provide the client with another (i.e. the external address) if given
+      sub = {server: config[:server_external] || config[:server], timestamp: (Time.now.to_f * 1000).round}.merge(options)
       sub[:signature] = Digest::SHA1.hexdigest([config[:secret_token], sub[:channel], sub[:timestamp]].join)
       sub
     end
@@ -71,7 +72,7 @@ module PrivatePub
     # Any options given are passed to the Faye::RackAdapter.
     def faye_app(options = {})
 			fe = FayeExtension.new(config)
-      options = {:mount => "/faye", :timeout => 25, :extensions => [fe]}.merge(options)
+      options = {mount: '/faye', timeout: 25, extensions: [fe]}.merge(options)
       Faye::RackAdapter.new(options)
     end
   end
