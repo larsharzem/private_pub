@@ -158,6 +158,8 @@ module PrivatePub
 						http.open_timeout = 2 # in seconds
 						http.read_timeout = 2 # in seconds
 						http.use_ssl = uri.scheme == 'https'
+						# SSL cert will not match, but we should always be able to trust stuff on the same machine
+						http.verify_mode = OpenSSL::SSL::VERIFY_NONE if uri.scheme == 'https' && uri.host  == '127.0.0.1' 
 						res = http.request(req)
 
 						puts "pinging rails server with URI #{uri.to_s}, response body:\n#{res.body}"
