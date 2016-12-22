@@ -9,16 +9,17 @@ module PrivatePub
 		@@rails_server = 'http://localhost'
 		
 		def initialize(options_hash = {})
+			options_hash.delete(:redis_address) # delete unused parameter
 			options_hash[:redis_server] ||= '127.0.0.1'
 			options_hash[:redis_port] ||= 6379
 			options_hash[:redis_password] ||= nil
-			puts "initialize faye extension, options: #{options_hash}"
 			@@rails_server = options_hash[:rails_server] unless options_hash[:rails_server].nil?
 			if options_hash[:redis_password].nil?
 				Redis.current = Redis.new(host: options_hash[:redis_server], port: options_hash[:redis_port])
 			else
 				Redis.current = Redis.new(host: options_hash[:redis_server], port: options_hash[:redis_port], password: options_hash[:redis_password])
 			end
+			puts "initialize faye extension, options: #{options_hash}\nRedis server: #{Redis.current}"
 			return self
 		end
 	
@@ -147,15 +148,16 @@ module PrivatePub
 			def ping_online_actors_change_to_rails(feed)
 				uri = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last)
 				req = Net::HTTP::Get.new(uri.to_s)
-				http = Net::HTTP.new(uri.host, uri.port)
-				http.open_timeout = 2 # in seconds
-				http.read_timeout = 2 # in seconds
-				http.use_ssl = uri.scheme == 'https'
 				Thread.new do
 					begin ## begin try
 						#res = Net::HTTP.start(uri.host, uri.port, read_timeout: 2, use_ssl: uri.scheme == 'https') {|http|
 						#	http.request(req)
 						#}
+						
+						http = Net::HTTP.new(uri.host, uri.port)
+						http.open_timeout = 2 # in seconds
+						http.read_timeout = 2 # in seconds
+						http.use_ssl = uri.scheme == 'https'
 						res = http.request(req)
 
 						puts "pinging rails server with URI #{uri.to_s}, response status: #{res.status}, body:\n#{res.body}"
