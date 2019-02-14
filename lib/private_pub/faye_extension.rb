@@ -66,7 +66,7 @@ module PrivatePub
 					begin
 						puts "writing new subscription, now #{client_ids.length} channels in total"
 						Redis.current.hset('subscriptions', message["subscription"], {time: Time.now.to_i, client_ids: client_ids})
-						ping_online_actors_change_to_rails(message["subscription"])
+						ping_online_actors_change_to_rails(message["subscription"], 'subscribing')
 					rescue Exception => e
 						puts "\nException: #{e}\n"
 					end
@@ -113,7 +113,7 @@ module PrivatePub
 							Redis.current.hdel('subscriptions', channel)
 							
 							puts "now: #{Redis.current.hgetall('subscriptions')}"
-							ping_online_actors_change_to_rails(channel)
+							ping_online_actors_change_to_rails(channel, 'disconnecting')
 						end
 					else
 						channel_hash[:time] = Time.now.to_i
@@ -145,21 +145,17 @@ module PrivatePub
 				return client_ids
 			end
 			
-			def ping_online_actors_change_to_rails(feed)
-				uri = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last)
+			def ping_online_actors_change_to_rails(feed, reason)
+				uri = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last + '&reason=' + reason)
 				req = Net::HTTP::Get.new(uri.to_s)
 				Thread.new do
 					begin ## begin try
-						#res = Net::HTTP.start(uri.host, uri.port, read_timeout: 2, use_ssl: uri.scheme == 'https') {|http|
-						#	http.request(req)
-						#}
-						
 						http = Net::HTTP.new(uri.host, uri.port)
 						http.open_timeout = 2 # in seconds
 						http.read_timeout = 2 # in seconds
 						http.use_ssl = uri.scheme == 'https'
 						# SSL cert will not match, but we should always be able to trust stuff on the same machine
-						http.verify_mode = OpenSSL::SSL::VERIFY_NONE if uri.scheme == 'https' && uri.host  == '127.0.0.1' 
+						http.verify_mode = OpenSSL::SSL::VERIFY_NONE if uri.scheme == 'https' && uri.host == '127.0.0.1' 
 						res = http.request(req)
 
 						puts "pinging rails server with URI #{uri.to_s}, response body:\n#{res.body}"
