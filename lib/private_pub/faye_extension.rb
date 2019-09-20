@@ -146,7 +146,7 @@ module PrivatePub
 			end
 			
 			def ping_online_actors_change_to_rails(feed, reason)
-				uri = URI.parse(@@rails_server + '/update_online_actors_ping?trigger_actor_id=' + feed.split('_').last + '&reason=' + reason)
+				uri = URI.parse("#{@@rails_server}/update_online_actors_ping?trigger_actor_id=#{feed.split('_').last}&reason=#{reason}&token_digest=#{Digest::SHA1.hexdigest(PrivatePub.config[:secret_token])}")
 				req = Net::HTTP::Get.new(uri.to_s)
 				Thread.new do
 					begin ## begin try
