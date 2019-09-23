@@ -92,7 +92,7 @@ module PrivatePub
 			def maintain_channel_subscriptions(message)
 				begin ## begin try
 					current_subsciptions = Redis.current.hgetall('subscriptions')
-					puts "\n#{Time.now} incoming, current_subsciptions: #{current_subsciptions.keys.join(', ')}"
+					puts "\n#{Time.now} incoming, current_subsciptions: #{current_subsciptions.keys.join(', ')}, message client id: #{message['clientId']}"
 					#Redis.current.hset('log', "#{Time.now.to_i}_inco", {message: message, current_subsciptions: current_subsciptions})
 					
 					return unless current_subsciptions
@@ -109,7 +109,7 @@ module PrivatePub
 							channel_hash[:client_ids].delete(message_client_id)
 							Redis.current.hset('subscriptions', channel, channel_hash)
 						else
-							puts "disconnect, deleting user's subscription (no channels left)"
+							puts "\ndisconnect, deleting user's subscription (no channels left)"
 							Redis.current.hdel('subscriptions', channel)
 							
 							puts "now: #{Redis.current.hgetall('subscriptions')}"
